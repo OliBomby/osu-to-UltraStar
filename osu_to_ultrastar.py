@@ -99,6 +99,12 @@ if __name__ == "__main__":
     input_folder = path.join(folder, 'Input')
     output_folder = path.join(folder, 'Output')
 
+    # Ensure input and output folder exists
+    if not os.path.exists(input_folder):
+        os.makedirs(input_folder)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
     input_files = os.listdir(input_folder)
     osu_files = [file for file in input_files if file.endswith(".osu")]
     lyric_files = [file for file in input_files if file.endswith(".txt")]
