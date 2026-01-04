@@ -11,11 +11,7 @@ git clone https://github.com/OliBomby/osu-to-UltraStar.git
 cd osu-to-UltraStar
 ```
 
-Install Python and dependencies:
-
-```bash
-pip install -r requirements.txt
-```
+Install Python.
 
 Put your `lyrics.txt` and `.osu` file and any accompanied audio, video, or backgrounds in the `Input` folder next to `osu_to_ultrastar.py`.
 The `lyrics.txt` should contain only the lyrics and each syllable should be separated with a `+`.

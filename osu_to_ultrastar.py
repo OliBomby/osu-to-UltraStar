@@ -2,8 +2,6 @@ import os
 import shutil
 from os import path
 
-from PIL import Image, ImageOps
-
 import osureader
 
 including = {'[General]': True,
@@ -41,21 +39,14 @@ def find_backgrounds(events):
     return backgrounds
 
 
-def resize_crop(src, out, width, height):
-    img = Image.open(src)
-    img = ImageOps.fit(img, (width, height), Image.ANTIALIAS, 0, (0.5, 0.5))
-    img.save(out)
-
-
 def get_next_lyric(lyrics):
     lyric = ""
     num = 0
     space_next = False
-    newline = False
     used_plus = False
 
     if len(lyrics) == 0:
-        return lyrics, "~", newline, used_plus
+        return lyrics, "~", used_plus
 
     for ch in lyrics:
         num += 1
@@ -64,7 +55,6 @@ def get_next_lyric(lyrics):
             break
         if ch == '\n':
             space_next = True
-            newline = True
             break
         if ch == ' ' and num > 1:
             space_next = True
@@ -75,7 +65,7 @@ def get_next_lyric(lyrics):
     if space_next:
         lyrics = " " + lyrics
 
-    return (lyrics, lyric, newline, used_plus) if lyric != "" else (lyrics, "~", newline, used_plus)
+    return (lyrics, lyric, used_plus) if lyric != "" else (lyrics, "~", used_plus)
 
 
 def main():
@@ -114,12 +104,12 @@ def main():
     year = input("Year: ")
     creator = input("Creator: ")
 
-    AUDIO = beatmap.audio_filename
+    audio = beatmap.audio_filename
     bgs = find_backgrounds(beatmap.events)
     bg = next((f for f, o in bgs if f.endswith(".jpg") or f.endswith(".png")), "")
     video, video_offset = next(((f, o) for f, o in bgs if f.endswith(".mp4") or f.endswith(".avi")), "")
 
-    copy_rename(AUDIO, AUDIO)
+    copy_rename(audio, audio)
     if bg != "":
         copy_rename(bg, bg)
     if video != "":
@@ -131,7 +121,7 @@ def main():
 
     first_time = beatmap.hit_objects[0].time
 
-    DEFAULT_PITCH = 0
+    default_pitch = 0
 
     with open(output_path, "w+", encoding="utf8") as file:
         file.write(f"#TITLE:{beatmap.title}\n")
@@ -162,13 +152,13 @@ def main():
             next_nc = next_ho is not None and next_ho.type_bits & 4
             beat = round((ho.time - first_time) / mpb * 4)
             next_beat = None if next_ho is None else round((next_ho.time - first_time) / mpb * 4)
-            lyrics, nextLyric, nc2, plus = get_next_lyric(lyrics)
+            lyrics, nextLyric, plus = get_next_lyric(lyrics)
             length = 32 if next_ho is None else min(round((next_ho.time - first_time) / mpb * 4) - beat, 32)
 
             if plus and next_nc:
-                file.write(f": {beat} {length} {DEFAULT_PITCH} {nextLyric}-\n")
+                file.write(f": {beat} {length} {default_pitch} {nextLyric}-\n")
             else:
-                file.write(f": {beat} {length} {DEFAULT_PITCH} {nextLyric}\n")
+                file.write(f": {beat} {length} {default_pitch} {nextLyric}\n")
 
             if next_nc:
                 file.write(f"- {next_beat}\n")
@@ -177,9 +167,9 @@ def main():
 
         # Add fake notes for any extra lyrics
         while len(lyrics) > 0:
-            lyrics, nextLyric, nc2, plus = get_next_lyric(lyrics)
+            lyrics, nextLyric, plus = get_next_lyric(lyrics)
             length = 1
-            file.write(f": {beat} {length} {DEFAULT_PITCH} {nextLyric}\n")
+            file.write(f": {beat} {length} {default_pitch} {nextLyric}\n")
             next_beat += 1
 
         file.write("E\n")
