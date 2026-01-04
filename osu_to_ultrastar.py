@@ -152,13 +152,13 @@ def main():
             next_nc = next_ho is not None and next_ho.type_bits & 4
             beat = round((ho.time - first_time) / mpb * 4)
             next_beat = None if next_ho is None else round((next_ho.time - first_time) / mpb * 4)
-            lyrics, nextLyric, plus = get_next_lyric(lyrics)
+            lyrics, next_lyric, plus = get_next_lyric(lyrics)
             length = 32 if next_ho is None else min(round((next_ho.time - first_time) / mpb * 4) - beat, 32)
 
             if plus and next_nc:
-                file.write(f": {beat} {length} {default_pitch} {nextLyric}-\n")
+                file.write(f": {beat} {length} {default_pitch} {next_lyric}-\n")
             else:
-                file.write(f": {beat} {length} {default_pitch} {nextLyric}\n")
+                file.write(f": {beat} {length} {default_pitch} {next_lyric}\n")
 
             if next_nc:
                 file.write(f"- {next_beat}\n")
@@ -167,9 +167,9 @@ def main():
 
         # Add fake notes for any extra lyrics
         while len(lyrics) > 0:
-            lyrics, nextLyric, plus = get_next_lyric(lyrics)
+            lyrics, next_lyric, plus = get_next_lyric(lyrics)
             length = 1
-            file.write(f": {beat} {length} {default_pitch} {nextLyric}\n")
+            file.write(f": {beat} {length} {default_pitch} {next_lyric}\n")
             next_beat += 1
 
         file.write("E\n")
