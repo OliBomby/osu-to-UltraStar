@@ -1,9 +1,10 @@
-import osureader
-
-from os import path
 import os
 import shutil
+from os import path
+
 from PIL import Image, ImageOps
+
+import osureader
 
 including = {'[General]': True,
              '[Editor]': False,
@@ -13,8 +14,6 @@ including = {'[General]': True,
              '[TimingPoints]': True,
              '[Colours]': False,
              '[HitObjects]': True}
-
-lyrics = ""
 
 
 def copy_rename(old_file_name, new_file_name):
@@ -28,56 +27,40 @@ def copy_rename(old_file_name, new_file_name):
     os.rename(dst_file, new_dst_file_name)
 
 
-def findParam(filename, param):
-    input_path = path.join(input_folder, filename)
-
-    with open(input_path, 'rt', encoding="utf8") as file:
-        for line in file:
-            sline = line.strip()
-            if sline.split(':')[0] == param:
-                split = sline.split(':')
-                if split[1][0] == ' ':
-                    return split[1][1:]
-                else:
-                    return split[1]
-    return ''
-
-
-def findBGs(events):
-    bgs = []
+def find_backgrounds(events):
+    backgrounds = []
     finding_bg = False
     for line in events:
         sline = line.strip()
         if finding_bg:
             split = sline.split(',')
             if len(split) > 2:
-                bgs.append((split[2][1:-1], int(split[1])))
+                backgrounds.append((split[2][1:-1], int(split[1])))
         if sline == "//Background and Video events":
             finding_bg = True
-    return bgs
+    return backgrounds
 
 
-def resizecrop(src, out, width, height):
+def resize_crop(src, out, width, height):
     img = Image.open(src)
     img = ImageOps.fit(img, (width, height), Image.ANTIALIAS, 0, (0.5, 0.5))
     img.save(out)
 
 
-def getNextLyric():
-    global lyrics
+def get_next_lyric(lyrics):
     lyric = ""
     num = 0
     space_next = False
     newline = False
-    plus = False
+    used_plus = False
 
     if len(lyrics) == 0:
-        return ("~", newline, plus)
+        return lyrics, "~", newline, used_plus
 
     for ch in lyrics:
         num += 1
         if ch == '+':
-            plus = True
+            used_plus = True
             break
         if ch == '\n':
             space_next = True
@@ -91,10 +74,11 @@ def getNextLyric():
     lyrics = lyrics[num:]
     if space_next:
         lyrics = " " + lyrics
-    return (lyric, newline, plus) if lyric != "" else ("~", newline, plus)
+
+    return (lyrics, lyric, newline, used_plus) if lyric != "" else (lyrics, "~", newline, used_plus)
 
 
-if __name__ == "__main__":
+def main():
     folder = path.dirname(__file__)
     input_folder = path.join(folder, 'Input')
     output_folder = path.join(folder, 'Output')
@@ -113,13 +97,16 @@ if __name__ == "__main__":
         print("No osu! files found in the Input folder.")
 
     map_path = path.join(input_folder, osu_files[0])
-    beatmap = osureader.readBeatmap(map_path)
+    beatmap = osureader.read_beatmap(map_path)
 
     if len(lyric_files) > 0:
-        with open(path.join(input_folder, lyric_files[0]), "r", encoding="utf8") as file:
-            lyrics = file.read()
+        with open(path.join(input_folder, lyric_files[0]), "r", encoding="utf8") as f:
+            lyrics = f.read()
+    else:
+        print("No lyric file found in the Input folder. Proceeding with empty lyrics.")
+        lyrics = ""
 
-    output_path = path.join(output_folder, "%s - %s.txt" % (beatmap.Artist, beatmap.Title))
+    output_path = path.join(output_folder, f"{beatmap.artist} - {beatmap.title}.txt")
 
     language = input("Language: ")
     edition = input("Edition: ")
@@ -127,78 +114,78 @@ if __name__ == "__main__":
     year = input("Year: ")
     creator = input("Creator: ")
 
-    audio = beatmap.AudioFilename
-    bgs = findBGs(beatmap.Events)
+    AUDIO = beatmap.audio_filename
+    bgs = find_backgrounds(beatmap.events)
     bg = next((f for f, o in bgs if f.endswith(".jpg") or f.endswith(".png")), "")
     video, video_offset = next(((f, o) for f, o in bgs if f.endswith(".mp4") or f.endswith(".avi")), "")
 
-    copy_rename(audio, audio)
+    copy_rename(AUDIO, AUDIO)
     if bg != "":
         copy_rename(bg, bg)
     if video != "":
         copy_rename(video, video)
 
-    redline = next(l for l in beatmap.TimingPoints if len(l) > 6 and l[6] == 1)
+    redline = next(l for l in beatmap.timing_points if len(l) > 6 and l[6] == 1)
     mpb = redline[1]
     bpm = round(6000000 / mpb) / 100
 
-    first_time = beatmap.HitObjects[0].time
+    first_time = beatmap.hit_objects[0].time
 
-    default_pitch = 0
+    DEFAULT_PITCH = 0
 
     with open(output_path, "w+", encoding="utf8") as file:
-        file.write("#TITLE:%s\n" % beatmap.Title)
-        file.write("#ARTIST:%s\n" % beatmap.Artist)
+        file.write(f"#TITLE:{beatmap.title}\n")
+        file.write(f"#ARTIST:{beatmap.artist}\n")
         if language != "":
-            file.write("#LANGUAGE:%s\n" % language)
+            file.write(f"#LANGUAGE:{language}\n")
         if edition != "":
-            file.write("#EDITION:%s\n" % edition)
+            file.write(f"#EDITION:{edition}\n")
         if genre != "":
-            file.write("#GENRE:%s\n" % genre)
+            file.write(f"#GENRE:{genre}\n")
         if year != "":
-            file.write("#YEAR:%s\n" % year)
+            file.write(f"#YEAR:{year}\n")
         if creator != "":
-            file.write("#CREATOR:%s\n" % creator)
-        file.write("#MP3:%s\n" % beatmap.AudioFilename)
+            file.write(f"#CREATOR:{creator}\n")
+        file.write(f"#MP3:{beatmap.audio_filename}\n")
         if bg != "":
-            file.write("#COVER:%s\n" % bg)
-            file.write("#BACKGROUND:%s\n" % bg)
+            file.write(f"#COVER:{bg}\n")
+            file.write(f"#BACKGROUND:{bg}\n")
         if video != "":
-            file.write("#VIDEO:%s\n" % video)
-            file.write("#VIDEOGAP:%s\n" % float(video_offset / -1000))
-        file.write("#BPM:%s\n" % bpm)
-        file.write("#GAP:%s\n" % first_time)
+            file.write(f"#VIDEO:{video}\n")
+            file.write(f"#VIDEOGAP:{float(video_offset / -1000)}\n")
+        file.write(f"#BPM:{bpm}\n")
+        file.write(f"#GAP:{first_time}\n")
 
-        last_nc = False
         next_beat = 0
-        for i, ho in enumerate(beatmap.HitObjects):
-            next_ho = beatmap.HitObjects[i+1] if i+1 < len(beatmap.HitObjects) else None
-            next_nc = next_ho is not None and next_ho.type & 4
+        for i, ho in enumerate(beatmap.hit_objects):
+            next_ho = beatmap.hit_objects[i + 1] if i + 1 < len(beatmap.hit_objects) else None
+            next_nc = next_ho is not None and next_ho.type_bits & 4
             beat = round((ho.time - first_time) / mpb * 4)
             next_beat = None if next_ho is None else round((next_ho.time - first_time) / mpb * 4)
-            nextLyric, nc2, plus = getNextLyric()
+            lyrics, nextLyric, nc2, plus = get_next_lyric(lyrics)
             length = 32 if next_ho is None else min(round((next_ho.time - first_time) / mpb * 4) - beat, 32)
 
             if plus and next_nc:
-                file.write(": %s %s %s %s-\n" % (beat, length, default_pitch, nextLyric))
+                file.write(f": {beat} {length} {DEFAULT_PITCH} {nextLyric}-\n")
             else:
-                file.write(": %s %s %s %s\n" % (beat, length, default_pitch, nextLyric))
-            
+                file.write(f": {beat} {length} {DEFAULT_PITCH} {nextLyric}\n")
+
             if next_nc:
-                file.write("- %s\n" % next_beat)
-            
-            last_nc = nc2
+                file.write(f"- {next_beat}\n")
+
             next_beat = beat + length
 
         # Add fake notes for any extra lyrics
         while len(lyrics) > 0:
-            nextLyric, nc2, plus = getNextLyric()
+            lyrics, nextLyric, nc2, plus = get_next_lyric(lyrics)
             length = 1
-            file.write(": %s %s %s %s\n" % (beat, length, default_pitch, nextLyric))
+            file.write(f": {beat} {length} {DEFAULT_PITCH} {nextLyric}\n")
             next_beat += 1
-            
+
         file.write("E\n")
 
     print("Done!")
 
 
+if __name__ == "__main__":
+    main()
